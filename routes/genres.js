@@ -9,3 +9,11 @@ router.post('/', addGenre);
 router.get('/:id([0-9]{1,})',getById);
 router.put('/:id([0-9]{1,})',updateGenre);
 router.del('/:id([0-9]{1,})',deleteGenre);
+
+function getAll (){
+    res.send('HELLO from GENRES')
+};
+function addGenre (){};
+function getById (){};
+function updateGenre (){};
+function deleteGenre (){};

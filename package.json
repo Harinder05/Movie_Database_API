@@ -4,7 +4,7 @@
   "description": "API for movies and tv shows",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "Start": "nodemon index.js"
   },
   "repository": {
     "type": "git",
@@ -15,6 +15,8 @@
   "dependencies": {
     "koa": "^2.14.1",
     "koa-bodyparser": "^4.3.0",
-    "koa-router": "^12.0.0"
+    "koa-router": "^12.0.0",
+    "mongodb": "^5.1.0",
+    "mongoose": "^7.0.0"
   }
 }

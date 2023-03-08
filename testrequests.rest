@@ -1,1 +1,19 @@
 GET https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies
+
+###
+
+POST https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies
+Content-Type: application/json
+
+{
+    "title":"Back to the Future",
+    "description": "Marty McFly, a 17-year-old high school student, is accidentally sent 30 years into the past in a time-traveling DeLorean invented by his close friend, the maverick scientist Doc Brown.",
+    "releaseDate": "",
+    "director": "Robert Zemeckis",
+    "cast": "Michael J. Fox,Christopher Lloyd,Lea Thompson,Crispin Glover,Tom Wilson" 
+
+}
+
+###
+
+PUT https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies/

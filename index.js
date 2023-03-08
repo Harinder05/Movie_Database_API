@@ -1,6 +1,8 @@
 const Koa = require('koa');
 const app = new Koa();
+const connectDB = require('./helpers/database');
 
+connectDB()
 
 const movies = require('./routes/movies.js');
 const tvshows = require('./routes/tvshows.js');

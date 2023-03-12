@@ -1,6 +1,9 @@
 GET https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies
 
 ###
+GET https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies/1
+
+###
 
 POST https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies
 Content-Type: application/json
@@ -17,3 +20,13 @@ Content-Type: application/json
 ###
 
 PUT https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/movies/
+
+###
+POST https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/register
+Content-Type: application/json
+
+{
+    "name":"jack",
+    "email": "jack@gmail.com",
+    "password": "jack",
+}

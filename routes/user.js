@@ -1,70 +1,47 @@
 const Router = require("koa-router");
 const bodyParser = require("koa-bodyparser");
-const User = require("../models/user.js");
-const bcrypt = require("bcryptjs");
-const { Code } = require("mongodb");
-
-const bcryptSalt = bcrypt.genSaltSync(10);
+const model = require("../models/user.js");
 
 const prefix = "/api/v1/user";
 const router = Router({ prefix: prefix });
 
+router.get("/", getAll);
 router.post("/register", bodyParser(), registerUser);
 router.post("/login", bodyParser(), loginUser);
+router.patch("/:id", bodyParser(), updateUser);
+router.delete("/:id", deleteUser);
 
-function hashpassword(password, salt) {
-  return bcrypt.hashSync(password, salt);
+async function getAll(ctx) {
+  let result = await model.getAll();
+  ctx.status = result.status;
+  ctx.body = { message: result.message };
 }
 
 async function registerUser(ctx) {
-  let { name, email, password } = ctx.request.body;
-  try {
-    const hashedpassword = hashpassword(password, bcryptSalt);
-    const usercreated = await User.create({
-      name: name,
-      email: email,
-      password: hashedpassword,
-    });
-    ctx.status = 200;
-    ctx.body = {
-      message: "Registration completed. Please login",
-    };
-  } catch (error) {
-    ctx.status = 400;
-    console.log(error);
-    ctx.body = {
-      message: `Error. ${error.message}`,
-    };
-  }
+  let body = ctx.request.body;
+  let result = await model.registerUser(body);
+  ctx.status = result.status;
+  ctx.body = { message: result.message };
 }
 
 async function loginUser(ctx) {
-  const { email, password } = ctx.request.body;
-  const userExists = await User.findOne({ email });
-  // check if user exists in database
-  if (userExists) {
-    // check if password is correct
-    const checkPassword = bcrypt.compareSync(password, userExists.password);
-    // if password is correct
-    if (checkPassword) {
-      ctx.status = 200;
-      ctx.body = {
-        message: "Login successful",
-      };
-      // if password is not correct
-    } else {
-      ctx.status = 401;
-      ctx.body = {
-        message: "Email or Password are not correct.",
-      };
-    }
-    // if user is not registered
-  } else {
-    ctx.status = 404;
-    ctx.body = {
-      message: "The user is not registered. Please register!",
-    };
-  }
+  let body = ctx.request.body;
+  let result = await model.loginUser(body);
+  ctx.status = result.status;
+  ctx.body = { message: result.message };
+}
+async function updateUser(ctx) {
+  let body = ctx.request.body;
+  let id = ctx.params.id;
+  let result = await model.updateUser(body, id);
+  ctx.status = result.status;
+  ctx.body = { message: result.message };
+}
+async function deleteUser(ctx) {
+  let id = ctx.params.id;
+  let result = await model.deleteUser(id);
+  ctx.status = result.status;
+  ctx.body = { message: result.message };
 }
 
 module.exports = router;

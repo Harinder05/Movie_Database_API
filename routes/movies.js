@@ -8,12 +8,12 @@ const router = Router({ prefix: prefix });
 router.get("/", getAll);
 router.post("/", bodyParser(), addMovie);
 router.get("/:id", getById);
-router.patch("/:id", bodyParser(), updateMovie);
+router.put("/:id", bodyParser(), updateMovie);
 router.del("/:id", deleteMovie);
 
 async function getAll(ctx) {
   try {
-    const allmovies = await Movies.find();
+    const allmovies = await Movies.find().select("-__v");
     ctx.status = 200;
     ctx.response.body = allmovies;
   } catch (error) {
@@ -56,7 +56,7 @@ async function getById(ctx) {
   try {
     let id = ctx.params.id;
     console.log(id);
-    let result = await Movies.findById(id);
+    let result = await Movies.findById(id).select("-__v");
 
     if (!result) {
       //console.log('Not Found');

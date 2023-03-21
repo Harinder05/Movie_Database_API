@@ -3,7 +3,7 @@ const app = new Koa();
 const connectDB = require("./helpers/database");
 const mongoose = require("mongoose");
 const cors = require("@koa/cors");
-const errorHandler = require("./errorhandler");
+
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -23,7 +23,7 @@ app.use(users.routes());
 //app.use(tvshows.routes());
 //app.use(cast.routes());
 //app.use(genres.routes());
-app.use(errorHandler);
+
 let port = 3000;
 app.listen(port);
 console.log(`Server started on port ${port}`);

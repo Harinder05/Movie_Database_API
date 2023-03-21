@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const User = require("../schemas/user");
+const { generateToken } = require("../controllers/auth");
 
 const bcryptSalt = bcrypt.genSaltSync(10);
 
@@ -7,27 +8,20 @@ function hashpassword(password, salt) {
   return bcrypt.hashSync(password, salt);
 }
 
-exports.registerUser = async function registerUser(body) {
-  let status, message;
-  const { name, email, password, role } = body;
+exports.registerUser = async function registerUser(ctx) {
+  const { name, email, password, role } = ctx.request.body;
 
   if (!name || !email || !password) {
-    status = 400;
-    message = "All fields are required";
-    return { status, message };
+    ctx.throw(400, "All fields are required");
   }
 
-  if (role && role!== "admin" && role!== "user"  ){
-    status = 400;
-    message = "Invalid Role";
-    return {status,message}
+  if (role && role !== "admin" && role !== "user") {
+    ctx.throw(400, "Invalid Role");
   }
 
   const duplicate = await User.findOne({ email });
   if (duplicate) {
-    status = 409;
-    message = "Email already used. Please register with different email";
-    return { status, message };
+    ctx.throw(409, "Email already used. Please register with different email");
   }
 
   const hashedpassword = hashpassword(password, bcryptSalt);
@@ -37,46 +31,43 @@ exports.registerUser = async function registerUser(body) {
     password: hashedpassword,
     role: role,
   });
-  status = 200;
-  message = `A user with name ${usercreated.name}, email ${usercreated.email} and ID ${usercreated._id} has been created.`;
-  return { status, message };
+  ctx.status = 200;
+  ctx.body = {
+    message: `A user with name ${usercreated.name}, email ${usercreated.email} and ID ${usercreated._id} has been created.`,
+  };
 };
 
-exports.loginUser = async function loginUser(body) {
-  let status, message;
-  let { email, password } = body;
-
+exports.loginUser = async function loginUser(ctx) {
+  let { email, password } = ctx.request.body;
   const userExists = await User.findOne({ email });
-
+  // If user is registered with this email
   if (userExists) {
     const checkPassword = bcrypt.compareSync(password, userExists.password);
-
+    // If password is correct
     if (checkPassword) {
-      status = 200;
-      message = "Login successful";
-      return { status, message };
+      const token = generateToken(userExists);
+      ctx.cookies.set("jwtToken", token, { httpOnly: true });
+      ctx.status = 200;
+      ctx.body = { message: `Login successful. Info in the toekn is ${token}` };
+      // User exists but password is wrong
     } else {
-      status = 401;
-      message = "Email or Password are not correct.";
-      return { status, message };
+      ctx.throw(401, "Email or Password are not correct.");
     }
+    // Email not in database
   } else {
-    status = 404;
-    message = "The user is not registered with this email. Please register!";
-    return { status, message };
+    ctx.throw(
+      404,
+      "The user is not registered with this email. Please register!"
+    );
   }
 };
 
-exports.updateUser = async function updateUser(body, id) {
-  let status, message;
-  const { name, email, role, password } = body;
-  const user = await User.findById(id);
+exports.updateUser = async function updateUser(ctx) {
+  const { name, email, role, password } = ctx.request.body;
+  const user = await User.findById(ctx.params.id);
   if (!user) {
-    status = 400;
-    message = "User not found";
-    return { status, message };
+    ctx.throw(400, "User not found");
   }
-
   user.name = name || user.name;
   user.email = email || user.email;
   user.role = role || user.role;
@@ -85,36 +76,45 @@ exports.updateUser = async function updateUser(body, id) {
 
   const updateduser = await user.save();
 
-  status = 200;
-  message = `${updateduser.name} has been updated`;
-  return { status, message };
+  ctx.status = 200;
+  ctx.body = { message: `${updateduser.name} has been updated` };
 };
 
-exports.deleteUser = async function deleteUser(id) {
-  let status, message;
-  const user = await User.findById(id);
+exports.deleteUser = async function deleteUser(ctx) {
+  const user = await User.findById(ctx.params.id);
   if (!user) {
-    status = 400;
-    message = "User not found";
-    return { status, message };
+    ctx.throw(400, "User not found");
   }
-
-  const result = await user.deleteOne();
-
-  status = 200;
-  message = `The user ${result.name} has been deleted`;
-  return { status, message };
+  const result = await user.deleteOne(ctx);
+  ctx.status = 200;
+  ctx.body = { message: `The user ${result.name} has been deleted` };
 };
 
-exports.getAll = async function getAll() {
-  let status, message;
-  const users = await User.find().select("-password -__v");
-  if (!users) {
-    status = 400;
-    message = "There are no users";
-    return { status, message };
+exports.getall = async function getall() {
+  try {
+    console.log("getall Models")
+    const foundusers = await User.find().select("-password -__v");
+    console.log(foundusers)
+    if (!foundusers) {
+      ctx.throw(404, "no users found");
+    }
+
+    return foundusers;
+  } catch (err) {
+    //console.error(err.status, err.message);
+    ctx.status = err.status || 404;
+    ctx.body = { message: err.message };
   }
-  status = 200;
-  message = users;
-  return { status, message };
+};
+
+exports.getById = async function getById(id) {
+  try {
+    const getUser = await User.findById(id);
+    
+    return getUser;
+  } catch (err) {
+    //console.error(err.status, err.message);
+    ctx.status = err.status || 404;
+    ctx.body = { message: err.message };
+  }
 };

@@ -30,3 +30,7 @@ Content-Type: application/json
     "email": "jack@gmail.com",
     "password": "jack",
 }
+
+###
+GET https://iriscaesar-cliffbundle-3000.codio-box.uk/api/v1/user
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY0MTY0ZGU1MDk1NjM0OTE4ODMwZTRkYSIsImVtYWlsIjoiYWRtaW5AZ21haWwuY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNjc5MTg0MDM1LCJleHAiOjE2NzkxODc2MzV9.TFxJ2HC02hiMHILstlr8MqHAwkRYfx2Uhm7quaUF1RQ

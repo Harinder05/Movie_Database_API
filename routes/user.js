@@ -1,47 +1,86 @@
 const Router = require("koa-router");
 const bodyParser = require("koa-bodyparser");
 const model = require("../models/user.js");
+const auth = require("../controllers/auth");
+const can = require("../permissions/user");
+const {isAdmin} = require ("../controllers/special")
 
 const prefix = "/api/v1/user";
 const router = Router({ prefix: prefix });
 
-router.get("/", getAll);
+router.get("/all",auth.verifyToken,isAdmin, getAll)
 router.post("/register", bodyParser(), registerUser);
 router.post("/login", bodyParser(), loginUser);
+router.get("/:id",auth.verifyToken,bodyParser(),getProfileInfo)
 router.patch("/:id", bodyParser(), updateUser);
 router.delete("/:id", deleteUser);
 
+
+async function getProfileInfo(ctx) {
+  const id = ctx.state.user.id;
+  const result = await model.getById(id);
+  
+  if (result){
+    const data = result.toObject();
+    data._id = data._id.toString();
+    const permission = can.read(ctx.state.user,data);
+    if (!permission.granted) {
+      ctx.throw(403, "Not ALLOWED");
+    }else{
+      ctx.status = 200;
+      ctx.body = permission.filter(data)
+    }
+    
+  }
+}
+
 async function getAll(ctx) {
-  let result = await model.getAll();
-  ctx.status = result.status;
-  ctx.body = { message: result.message };
+  try {
+    const result = await model.getall();
+    ctx.status = 200;
+    ctx.body = result;
+  } catch (err) {
+    console.error(err.status, err.message);
+    ctx.throw(err.status, err.message);
+  }
 }
 
 async function registerUser(ctx) {
-  let body = ctx.request.body;
-  let result = await model.registerUser(body);
-  ctx.status = result.status;
-  ctx.body = { message: result.message };
+  try {
+    await model.registerUser(ctx);
+  } catch (err) {
+    //ctx.status = err.status;
+    //ctx.body = {message: err.message};
+    console.error(err.status, err.message);
+    ctx.throw(err.status, err.message);
+  }
 }
 
 async function loginUser(ctx) {
-  let body = ctx.request.body;
-  let result = await model.loginUser(body);
-  ctx.status = result.status;
-  ctx.body = { message: result.message };
+  try {
+    await model.loginUser(ctx);
+  } catch (err) {
+    console.error(err.status, err.message);
+    ctx.throw(err.status, err.message);
+  }
 }
 async function updateUser(ctx) {
-  let body = ctx.request.body;
-  let id = ctx.params.id;
-  let result = await model.updateUser(body, id);
-  ctx.status = result.status;
-  ctx.body = { message: result.message };
+  try {
+    await model.updateUser(ctx);
+  } catch (err) {
+    console.error(err.status, err.message);
+    ctx.throw(err.status, err.message);
+  }
 }
 async function deleteUser(ctx) {
-  let id = ctx.params.id;
-  let result = await model.deleteUser(id);
-  ctx.status = result.status;
-  ctx.body = { message: result.message };
+  try {
+    await model.deleteUser(id);
+  } catch (err) {
+    console.error(err.status, err.message);
+    ctx.throw(err.status, err.message);
+  }
 }
+
+
 
 module.exports = router;

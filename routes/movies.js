@@ -1,15 +1,37 @@
 const Router = require("koa-router");
 const bodyParser = require("koa-bodyparser");
-const Movies = require("../models/movies");
+const Movies = require("../schemas/movies");
+const auth = require("../controllers/auth")
+const model = require("../models/movies.js");
+const can = require("../permissions/movies");
+
 
 const prefix = "/api/v1/movies";
 const router = Router({ prefix: prefix });
 
+
+router.get("/search/:title",searchMovie)
 router.get("/", getAll);
 router.post("/", bodyParser(), addMovie);
 router.get("/:id", getById);
 router.put("/:id", bodyParser(), updateMovie);
 router.del("/:id", deleteMovie);
+
+
+async function searchMovie (ctx){
+  try{
+    const title = ctx.params.title;
+    const result = await model.searchMovie(ctx,title);
+    console.log(result)
+    ctx.status = 200;
+    ctx.body = result;
+  }catch(err) {
+    //console.error(err.status,err.message)
+    ctx.status = err.status || 404;
+    ctx.body = {message: err.message}
+  }
+}
+
 
 async function getAll(ctx) {
   try {

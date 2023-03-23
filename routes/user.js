@@ -8,10 +8,10 @@ const {isAdmin} = require ("../controllers/special")
 const prefix = "/api/v1/user";
 const router = Router({ prefix: prefix });
 
-router.get("/all",auth.verifyToken,isAdmin, getAll)
+router.get("/all", auth.verify, isAdmin, getAll)
 router.post("/register", bodyParser(), registerUser);
 router.post("/login", bodyParser(), loginUser);
-router.get("/:id",auth.verifyToken,bodyParser(),getProfileInfo)
+router.get("/:id", auth.verify, bodyParser(), getProfileInfo)
 router.patch("/:id", bodyParser(), updateUser);
 router.delete("/:id", deleteUser);
 

@@ -14,7 +14,7 @@ exports.generateToken = function generateToken(user) {
   return token;
 };
 
-exports.verifyToken = async function verifyToken(ctx, next) {
+exports.verify = async function verify(ctx, next) {
   const authHeader = ctx.request.header.authorization;
   if (!authHeader) {
     ctx.throw(401, "No token");

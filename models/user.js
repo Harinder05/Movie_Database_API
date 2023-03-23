@@ -46,9 +46,8 @@ exports.loginUser = async function loginUser(ctx) {
     // If password is correct
     if (checkPassword) {
       const token = generateToken(userExists);
-      ctx.cookies.set("jwtToken", token, { httpOnly: true });
       ctx.status = 200;
-      ctx.body = { message: `Login successful. Info in the toekn is ${token}` };
+      ctx.body = { message: `Login successful. TOKEN:  ${token}` };
       // User exists but password is wrong
     } else {
       ctx.throw(401, "Email or Password are not correct.");
@@ -92,9 +91,9 @@ exports.deleteUser = async function deleteUser(ctx) {
 
 exports.getall = async function getall() {
   try {
-    console.log("getall Models")
+    console.log("getall Models");
     const foundusers = await User.find().select("-password -__v");
-    console.log(foundusers)
+    console.log(foundusers);
     if (!foundusers) {
       ctx.throw(404, "no users found");
     }
@@ -110,7 +109,7 @@ exports.getall = async function getall() {
 exports.getById = async function getById(id) {
   try {
     const getUser = await User.findById(id);
-    
+
     return getUser;
   } catch (err) {
     //console.error(err.status, err.message);

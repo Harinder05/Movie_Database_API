@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/movies.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/movies.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @module Movies-Routes
+ * @author Harinderveer Singh
+ * @description Provides the routes and functions to manage the movies
+ */
+
+const Router = require("koa-router");
+const bodyParser = require("koa-bodyparser");
+const auth = require("../controllers/auth");
+const model = require("../models/movies.js");
+const can = require("../permissions/movies");
+const axios = require("axios");
+const { paginate } = require("../controllers/special");
+const { apikey } = require("../config").config;
+const {validateNewMovie,validateUpdateMovie} = require("../controllers/validation");
+
+const prefix = "/api/v1/movies";
+const router = Router({ prefix: prefix });
+
+//Public Routes
+router.get("/search/:title", searchMovie);
+router.get("/", getAll);
+router.get("/:id", getById);
+
+//Protected Routes
+router.post("/", bodyParser(), auth.verify, validateNewMovie, addMovie);
+router.put("/:id", bodyParser(), auth.verify, validateUpdateMovie, updateMovie);
+router.del("/:id", auth.verify, deleteMovie);
+
+/**
+ * @function searchMovie
+ * @async
+ * @description Search for movie using the title given by user, first search the local database and if there is no result use third party api
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+async function searchMovie(ctx) {
+  try {
+    const title = ctx.params.title;
+    const dbResult = await model.searchMovie(title);
+    let finalResult;
+    if (dbResult.length > 0) {
+      finalResult = dbResult;
+    } else {
+      // Make request to third party api
+      const requestUrl = `https://imdb-api.com/en/API/SearchMovie/${apikey}/${title}`;
+      const apiresponse = await axios.get(requestUrl);
+      // Unexpected Response
+      if (apiresponse.status !== 200) {
+        ctx.throw(502, "Failed to get data from Third Paty Api");
+      }
+      // Empty Response if input not good
+      if (apiresponse.data.results.length == 0) {
+        ctx.status = 200;
+        ctx.body = {
+          message: "No results found. Try searching a different movie",
+        };
+        return;
+      }
+      finalResult = apiresponse.data.results;
+    }
+    const pagenumber = ctx.query.page || 1;
+    const itemsonpage = ctx.query.limit || 5;
+    const paginatedResults = paginate(finalResult, pagenumber, itemsonpage);
+
+    ctx.status = 200;
+    ctx.body = paginatedResults;
+  } catch (err) {
+    //console.error(err.status,err.message)
+    ctx.status = err.status || 404;
+    ctx.body = { message: err.message };
+  }
+}
+
+/**
+ * @function getAll
+ * @async
+ * @description Find all the movies stored in local database
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+async function getAll(ctx) {
+  try {
+    const result = await model.getAll();
+    const pagenumber = ctx.query.page || 1;
+    const itemsonpage = ctx.query.limit || 5;
+    const paginatedResults = paginate(result.message, pagenumber, itemsonpage);
+
+    ctx.status = 200;
+    ctx.body = paginatedResults;
+  } catch (error) {
+    console.log(error);
+  }
+}
+/**
+ * @function getById
+ * @async
+ * @description Find the movies by the Id given by user from local database
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+async function getById(ctx) {
+  try {
+    const id = ctx.params.id;
+    const result = await model.getById(id);
+    if (!result) {
+      ctx.throw(404, `The ID ${id} does not match with any movie`);
+    }
+    ctx.status = 200;
+    ctx.body = result;
+  } catch (err) {
+    if (err.name === "CastError") {
+      ctx.status = err.status || 400;
+      ctx.body = { error: "Invalid ID! The ID must be 24 characters long" };
+    } else {
+      ctx.status = err.status || 500;
+      ctx.body = {
+        error:
+          err.message ||
+          "An unexpected error occurred. Please try again later.",
+      };
+    }
+  }
+}
+
+
+/**
+ * @function addMovie
+ * @async
+ * @description Adds a movie to local database
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+
+async function addMovie(ctx) {
+  try {
+    const createrId = ctx.state.user.id;
+    const body = ctx.request.body;
+    const result = await model.addMovie(body, createrId);
+    ctx.status = result.status;
+    ctx.body = {
+      message: {
+        info: "New movie added to database successfully",
+        created: true,
+        link: `${ctx.request.path}/${result.message._id}`,
+      },
+    };
+  } catch (err) {
+    if (err.message === "duplicate") {
+      ctx.status = 409;
+      ctx.body = { error: "This movie is already in the database" };
+    } else {
+      console.error(err.message);
+      ctx.status = 500;
+      ctx.body = {
+        error: "Could not add the movie. Unexpected error occurred.",
+      };
+    }
+  }
+}
+
+
+/**
+ * @function updateMovie
+ * @async
+ * @description Updates a movie by Id in local database
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+async function updateMovie(ctx) {
+  try {
+    const update = ctx.request.body;
+    const id = ctx.params.id;
+    const movieExists = await model.getById(id);
+    const permission = can.update(ctx.state.user, movieExists);
+    if (!permission.granted) {
+      ctx.status = 400;
+      ctx.body = { message: "You are not allowed to update" };
+      return;
+    }
+    result = await model.updateMovie(id, update);
+    ctx.status = result.status;
+    ctx.body = { message: { updated: true, info: result.message } };
+    return;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = { error: "Unexpected Error. Try again later" };
+  }
+}
+/**
+ * @function deleteMovie
+ * @async
+ * @description Deletes a movie by Id from local database
+ * @param {Object} ctx - Koa context
+ * @throws {Error} Can throw error if there is issue with request/response
+ */
+async function deleteMovie(ctx) {
+  try {
+    const permission = can.delete(ctx.state.user);
+
+    if (!permission.granted) {
+      ctx.status = 400;
+      ctx.body = { message: "You are not allowed to delete" };
+      return;
+    }
+    const id = ctx.params.id;
+    const result = await model.deleteMovie(id);
+    ctx.status = result.status;
+    ctx.body = { message: { deleted: true, info: result.message } };
+  } catch (err) {
+    console.error(err);
+    if (err.name === "CastError") {
+      ctx.status = 400;
+      ctx.body = { error: "Invalid ID! The ID must be 24 characters long" };
+    } else {
+      ctx.status = 500;
+      ctx.body = {
+        error: "An unexpected error occurred. Please try again later.",
+      };
+    }
+  }
+}
+
+module.exports = router;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-Movies-Models.html">Movies-Models</a></li><li><a href="module-Movies-Routes.html">Movies-Routes</a></li><li><a href="module-User-Models.html">User-Models</a></li><li><a href="module-User-Routes.html">User-Routes</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Apr 07 2023 15:58:51 GMT+0000 (GMT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

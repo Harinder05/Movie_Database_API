@@ -1,73 +1,140 @@
-const Movies = require("../schemas/movies");
-const info = require("../config");
-const axios = require("axios");
-const NodeCache = require("node-cache")
-const cache = new NodeCache ({stdTTL: 5*60})
+/**
+ * @module Movies-Models
+ * @author Harinderveer Singh
+ * @description Provides access to database for managing movies
+ */
+
+const Movies = require("../schemas/dbSchemas/movies");
 
 
-const apikey = info.config.apikey;
-
-
-exports.searchMovie = async function searchMovie(ctx,title) {
-    try{
-        // Search local database first
-        const localresult = await Movies.find({title: new RegExp(title,'i')}).select('-__v')
-        console.log(localresult)
-        if (localresult.length > 0) {
-            
-            let formattedResult = "THESE RESULTS ARE FROM LOCAL DATABASE\n\n";
-            localresult.forEach((movie) => {
-                
-                formattedResult += `Movie ID: ${movie.id}\n`;
-                formattedResult += `Title: ${movie.title}\n`;
-                formattedResult += `Description: ${movie.description}\n`;
-                formattedResult += `Release Date: ${new Date(movie.releaseDate).toLocaleDateString()}\n`;
-                formattedResult += `Director: ${movie.director}\n`;
-                formattedResult += `Cast: ${movie.cast}\n`;
-                formattedResult += "\n"
-                });
-            return formattedResult;
-        }else{
-            // Mmake request to third party api
-            const requestUrl = `https://imdb-api.com/en/API/SearchMovie/${apikey}/${title}`
-            const apiresponse = await axios.get(requestUrl);
-            
-            if (apiresponse.status !== 200) {
-                throw new Error("Failed to get data from IMDb Api")
-            }
-    
-            const result = apiresponse.data.results
-
-            const pagenumber = ctx.query.page || 1;
-            const itemsonpage = ctx.query.limit || 5;
-
-            const paginatedresults = paginate(result,pagenumber,itemsonpage)
-
-
-            let formattedResult = "THESE RESULTS ARE FROM THE IMDB API\n\n";
-            paginatedresults.forEach((movie) => {
-                
-                formattedResult += `Imdb ID: ${movie.id}\n`;
-                formattedResult += `Title: ${movie.title}\n`;
-                formattedResult += `Description: ${movie.description}\n`;
-                formattedResult += `Poster Image: ${movie.image}\n`;
-                formattedResult += "\n"
-                });
-
-            return formattedResult;
-        }
-        
-    } catch (err){
-        console.error(err.message)
-    }    
+/**
+ * @function searchMovie
+ * @async
+ * @description Search for movie in database
+ * @param {string} title - Given by user
+ * @returns {Promise<Array>} List of movie(s) matching the title
+ */
+async function searchMovie(title) {
+  const data = await Movies.find({ title: new RegExp(title, "i") })
+    .select("-__v")
+    .populate("cast", "name");
+  return data;
 }
 
-
-
-function paginate(results,pagenumber,itemsonpage) {
-    const start = (pagenumber-1) * itemsonpage;
-    
-    const end = start + parseInt(itemsonpage);
-    
-    return results.slice(start,end);
+/**
+ * @function getAll
+ * @async
+ * @description Search for all the movies in database
+ * @returns {Promise<Object>} List of all the movies
+ */
+async function getAll() {
+  const data = await Movies.find()
+    .select("-__v")
+    .populate([
+      { path: "cast", select: "name -_id" },
+      { path: "createdBy", select: "name -_id" },
+      { path: "updatedBy", select: "name -_id" },
+    ]);
+  if (!data) {
+    return { status: 404, message: "No movies in database" };
+  }
+  return { status: 200, message: data };
 }
+
+/**
+ * @function getById
+ * @async
+ * @description Search for specific movie by its Id in database
+ * @param {string} id - Given by user, Id used to retrieve the movie
+ * @returns {Promise<Object>} The movie that matches with ID
+ */
+async function getById(id) {
+  const data = await Movies.findById(id)
+    .select("-__v")
+    .populate("cast", "name")
+    .populate("createdBy", "name")
+    .populate("updatedBy", "name");
+  return data;
+}
+
+/**
+ * @function addMovie
+ * @async
+ * @description Adds a movie to database
+ * @param {Object} body - Data of movie to add 
+ * @param {string} createrId - Retreieved from the token, Id of the user who added the movie in database
+ * @returns {Promise<Object>} Object with status code and message about the added movie
+ * @throws {Error} If movie being added is already in database
+ */
+async function addMovie(body, createrId) {
+  let { title, description, releaseDate, cast, director } = body;
+  console.log(cast);
+
+  const duplicate = await Movies.findOne({ title, releaseDate, director });
+  if (duplicate) {
+    throw new Error("duplicate");
+  }
+
+  const data = await Movies.create({
+    title,
+    description,
+    releaseDate,
+    cast,
+    director,
+    createdBy: createrId,
+    updatedBy: createrId,
+  });
+
+  if (!data) {
+    return { status: 400, message: "Could not add movie. Try later" };
+  }
+
+  return { status: 201, message: data };
+}
+
+/**
+ * @function updateMovie
+ * @async
+ * @description Updates a movie in database
+ * @param {Object} body - Data of movie to update
+ * @param {string} id - Given by user, Id of the movie to be updated
+ * @returns {Promise<Object>} Object with status code and message about the updated movie
+ */
+async function updateMovie(id, update) {
+  let { title, description, releaseDate, cast, director } = update;
+
+  const data = await Movies.findById(id);
+
+  data.title = title || data.title;
+  data.description = description || data.description;
+  data.director = director || data.director;
+  data.releaseDate = releaseDate || data.releaseDate;
+  data.cast = cast || data.cast;
+  await data.save();
+  return { status: 201, message: data };
+}
+
+/**
+ * @function deleteMovie
+ * @async
+ * @description Deletes a movie from database
+ * @param {string} id - Given by user, Id of the movie to be deleted
+ * @returns {Promise<Object>} Object with status code and message about the deleted movie
+ */
+async function deleteMovie(id) {
+  const movie = await Movies.findById(id);
+  if (!movie) {
+    return { status: 400, message: "Movie not found. Check ID." };
+  }
+  const result = await Movies.findByIdAndDelete(id);
+  return { status: 200, message: `The movie ${result.title} has been deleted` };
+}
+
+module.exports = {
+  searchMovie,
+  getAll,
+  getById,
+  addMovie,
+  updateMovie,
+  deleteMovie,
+};

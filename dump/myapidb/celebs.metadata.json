@@ -1,0 +1,1 @@
+{"options":{},"indexes":[{"v":2,"key":{"_id":1},"name":"_id_","ns":"myapidb.celebs"},{"v":2,"unique":true,"key":{"name":1},"name":"name_1","ns":"myapidb.celebs","background":true}],"uuid":"9f49a8d067004a0393e6cd953608576f"}

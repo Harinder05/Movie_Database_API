@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: models/movies.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: models/movies.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @module Movies-Models
+ * @author Harinderveer Singh
+ * @description Provides access to database for managing movies
+ */
+
+const Movies = require("../schemas/dbSchemas/movies");
+
+
+/**
+ * @function searchMovie
+ * @async
+ * @description Search for movie in database
+ * @param {string} title - Given by user
+ * @returns {Promise&lt;Array>} List of movie(s) matching the title
+ */
+async function searchMovie(title) {
+  const data = await Movies.find({ title: new RegExp(title, "i") })
+    .select("-__v")
+    .populate("cast", "name");
+  return data;
+}
+
+/**
+ * @function getAll
+ * @async
+ * @description Search for all the movies in database
+ * @returns {Promise&lt;Object>} List of all the movies
+ */
+async function getAll() {
+  const data = await Movies.find()
+    .select("-__v")
+    .populate([
+      { path: "cast", select: "name -_id" },
+      { path: "createdBy", select: "name -_id" },
+      { path: "updatedBy", select: "name -_id" },
+    ]);
+  if (!data) {
+    return { status: 404, message: "No movies in database" };
+  }
+  return { status: 200, message: data };
+}
+
+/**
+ * @function getById
+ * @async
+ * @description Search for specific movie by its Id in database
+ * @param {string} id - Given by user, Id used to retrieve the movie
+ * @returns {Promise&lt;Object>} The movie that matches with ID
+ */
+async function getById(id) {
+  const data = await Movies.findById(id)
+    .select("-__v")
+    .populate("cast", "name")
+    .populate("createdBy", "name")
+    .populate("updatedBy", "name");
+  return data;
+}
+
+/**
+ * @function addMovie
+ * @async
+ * @description Adds a movie to database
+ * @param {Object} body - Data of movie to add 
+ * @param {string} createrId - Retreieved from the token, Id of the user who added the movie in database
+ * @returns {Promise&lt;Object>} Object with status code and message about the added movie
+ * @throws {Error} If movie being added is already in database
+ */
+async function addMovie(body, createrId) {
+  let { title, description, releaseDate, cast, director } = body;
+  console.log(cast);
+
+  const duplicate = await Movies.findOne({ title, releaseDate, director });
+  if (duplicate) {
+    throw new Error("duplicate");
+  }
+
+  const data = await Movies.create({
+    title,
+    description,
+    releaseDate,
+    cast,
+    director,
+    createdBy: createrId,
+    updatedBy: createrId,
+  });
+
+  if (!data) {
+    return { status: 400, message: "Could not add movie. Try later" };
+  }
+
+  return { status: 201, message: data };
+}
+
+/**
+ * @function updateMovie
+ * @async
+ * @description Updates a movie in database
+ * @param {Object} body - Data of movie to update
+ * @param {string} id - Given by user, Id of the movie to be updated
+ * @returns {Promise&lt;Object>} Object with status code and message about the updated movie
+ */
+async function updateMovie(id, update) {
+  let { title, description, releaseDate, cast, director } = update;
+
+  const data = await Movies.findById(id);
+
+  data.title = title || data.title;
+  data.description = description || data.description;
+  data.director = director || data.director;
+  data.releaseDate = releaseDate || data.releaseDate;
+  data.cast = cast || data.cast;
+  await data.save();
+  return { status: 201, message: data };
+}
+
+/**
+ * @function deleteMovie
+ * @async
+ * @description Deletes a movie from database
+ * @param {string} id - Given by user, Id of the movie to be deleted
+ * @returns {Promise&lt;Object>} Object with status code and message about the deleted movie
+ */
+async function deleteMovie(id) {
+  const movie = await Movies.findById(id);
+  if (!movie) {
+    return { status: 400, message: "Movie not found. Check ID." };
+  }
+  const result = await Movies.findByIdAndDelete(id);
+  return { status: 200, message: `The movie ${result.title} has been deleted` };
+}
+
+module.exports = {
+  searchMovie,
+  getAll,
+  getById,
+  addMovie,
+  updateMovie,
+  deleteMovie,
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-Movies-Models.html">Movies-Models</a></li><li><a href="module-Movies-Routes.html">Movies-Routes</a></li><li><a href="module-User-Models.html">User-Models</a></li><li><a href="module-User-Routes.html">User-Routes</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Fri Apr 07 2023 15:58:51 GMT+0000 (GMT)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

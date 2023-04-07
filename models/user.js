@@ -1,29 +1,42 @@
-const bcrypt = require("bcryptjs");
-const User = require("../schemas/user");
-const { generateToken } = require("../controllers/auth");
+/**
+ * @module User-Models
+ * @author Harinderveer Singh
+ * @description Provides access to database for managing users
+ */
 
+const bcrypt = require("bcryptjs");
+const User = require("../schemas/dbSchemas/user");
+const { generateToken } = require("../controllers/auth");
 const bcryptSalt = bcrypt.genSaltSync(10);
 
+
+/**
+ * @function hashpassword
+ * @description Hashes the password that is given using the salt provided
+ * @param {string} password - The password to hash
+ * @param {string} salt - The salt used for hashing
+ * @returns {String} Hashed password
+ */
 function hashpassword(password, salt) {
   return bcrypt.hashSync(password, salt);
 }
 
-exports.registerUser = async function registerUser(ctx) {
-  const { name, email, password, role } = ctx.request.body;
-
-  if (!name || !email || !password) {
-    ctx.throw(400, "All fields are required");
-  }
-
-  if (role && role !== "admin" && role !== "user") {
-    ctx.throw(400, "Invalid Role");
-  }
+/**
+ * @function registerUser
+ * @description Register a new user in database
+ * @param {Object} body - The user data
+ * @returns {Object} Object with status code and message about registration
+ */
+exports.registerUser = async function registerUser(body) {
+  const { name, email, password, role } = body;
 
   const duplicate = await User.findOne({ email });
   if (duplicate) {
-    ctx.throw(409, "Email already used. Please register with different email");
+    return {
+      status: 409,
+      message: "Email already used. Please register with different email",
+    };
   }
-
   const hashedpassword = hashpassword(password, bcryptSalt);
   const usercreated = await User.create({
     name: name,
@@ -31,81 +44,96 @@ exports.registerUser = async function registerUser(ctx) {
     password: hashedpassword,
     role: role,
   });
-  ctx.status = 200;
-  ctx.body = {
+  return {
+    status: 201,
     message: `A user with name ${usercreated.name}, email ${usercreated.email} and ID ${usercreated._id} has been created.`,
   };
 };
 
-exports.loginUser = async function loginUser(ctx) {
-  let { email, password } = ctx.request.body;
+
+/**
+ * @function loginUser
+ * @description Logs in a user
+ * @param {Object} body - The user data
+ * @returns {Object} Object with status code and message about login
+ */
+exports.loginUser = async function loginUser(body) {
+  let { email, password } = body;
   const userExists = await User.findOne({ email });
-  // If user is registered with this email
   if (userExists) {
     const checkPassword = bcrypt.compareSync(password, userExists.password);
-    // If password is correct
     if (checkPassword) {
       const token = generateToken(userExists);
-      ctx.status = 200;
-      ctx.body = { message: `Login successful. TOKEN:  ${token}` };
-      // User exists but password is wrong
+      return { status: 200, message: `Login successful. TOKEN:  ${token}` };
     } else {
-      ctx.throw(401, "Email or Password are not correct.");
+      return { status: 401, message: "Password not correct." };
     }
-    // Email not in database
   } else {
-    ctx.throw(
-      404,
-      "The user is not registered with this email. Please register!"
-    );
+    return {
+      status: 401,
+      message: "This email is not registered. Please register!",
+    };
   }
 };
 
-exports.updateUser = async function updateUser(ctx) {
-  const { name, email, role, password } = ctx.request.body;
-  const user = await User.findById(ctx.params.id);
+
+/**
+ * @function updateUser
+ * @description Updates information about a registered user
+ * @param {Object} body - The user data
+ * @param {String} id - Id of user to update
+ * @returns {Object} Object with status code and message about update
+ */
+exports.updateUser = async function updateUser(id, body) {
+  const { name, email, role, password } = body;
+  const user = await User.findById(id);
   if (!user) {
-    ctx.throw(400, "User not found");
+    return { status: 400, message: "User not found. Check ID given." };
   }
-  user.name = name || user.name;
-  user.email = email || user.email;
-  user.role = role || user.role;
+  user.name = name;
+  user.email = email;
+  user.role = role;
   const hashedpassword = hashpassword(password, bcryptSalt);
   user.password = hashedpassword;
 
   const updateduser = await user.save();
-
-  ctx.status = 200;
-  ctx.body = { message: `${updateduser.name} has been updated` };
+  return { status: 200, message: `${updateduser.name} has been updated` };
 };
 
-exports.deleteUser = async function deleteUser(ctx) {
-  const user = await User.findById(ctx.params.id);
+/**
+ * @function deleteUser
+ * @description Deletes a user from database
+ * @param {String} id - Id of user to delete
+ * @returns {Object} Object with status code and message about deletion
+ */
+exports.deleteUser = async function deleteUser(id) {
+  const user = await User.findById(id);
   if (!user) {
-    ctx.throw(400, "User not found");
+    return { status: 400, message: "User not found. Check ID given." };
   }
-  const result = await user.deleteOne(ctx);
-  ctx.status = 200;
-  ctx.body = { message: `The user ${result.name} has been deleted` };
+  const result = await User.findByIdAndDelete(id);
+  return { status: 200, message: `The user ${result.name} has been deleted` };
 };
 
+/**
+ * @function getall
+ * @description Retreives all users from database
+ * @returns {Object} Object with status code and message about data found
+ */
 exports.getall = async function getall() {
-  try {
-    console.log("getall Models");
-    const foundusers = await User.find().select("-password -__v");
-    console.log(foundusers);
-    if (!foundusers) {
-      ctx.throw(404, "no users found");
-    }
-
-    return foundusers;
-  } catch (err) {
-    //console.error(err.status, err.message);
-    ctx.status = err.status || 404;
-    ctx.body = { message: err.message };
+  const foundusers = await User.find().select("-password -__v");
+  if (!foundusers) {
+    return { status: 404, message: "No users. Empty database" };
   }
+  return { status: 200, message: foundusers };
 };
 
+/**
+ * @function getById
+ * @description Retrieves information about one user
+ * @param {String} id - Id used to find user information
+ * @returns {Object} Object with data found about user
+ */
 exports.getById = async function getById(id) {
   try {
     const getUser = await User.findById(id);

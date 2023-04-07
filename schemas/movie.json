@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "definitions": {
+
+    "newmovie": {
+      "$id": "#newmovie",
+      "title": "NewMovie",
+      "description": "Format to add a new movie",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "releaseDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "director": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "cast": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type":"string",
+            "minLength":24,
+            "maxLength": 24
+          }
+        }
+      },
+      "required": ["title", "description", "releaseDate", "director", "cast"],
+      "additionalProperties": false
+    },
+    "updatemovie": {
+      "$id": "#updatemovie",
+      "title": "UpdateMovie",
+      "description": "Format to update exsisting movie (not all fields are required)",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "releaseDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "director": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "cast": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type":"string",
+            "minLength":24,
+            "maxLength": 24
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -6,7 +6,6 @@
 
 const Movies = require("../schemas/dbSchemas/movies");
 
-
 /**
  * @function searchMovie
  * @async
@@ -35,10 +34,22 @@ async function getAll() {
       { path: "createdBy", select: "name -_id" },
       { path: "updatedBy", select: "name -_id" },
     ]);
+  data.reverse();
   if (!data) {
     return { status: 404, message: "No movies in database" };
   }
   return { status: 200, message: data };
+}
+
+async function getUserMovies(userId) {
+  const movies = await Movies.find({ createdBy: userId });
+  if (!movies) {
+    return {
+      status: 404,
+      message: "User has not added any movies to database",
+    };
+  }
+  return { status: 200, message: movies };
 }
 
 /**
@@ -61,29 +72,30 @@ async function getById(id) {
  * @function addMovie
  * @async
  * @description Adds a movie to database
- * @param {Object} body - Data of movie to add 
+ * @param {Object} body - Data of movie to add
  * @param {string} createrId - Retreieved from the token, Id of the user who added the movie in database
  * @returns {Promise<Object>} Object with status code and message about the added movie
  * @throws {Error} If movie being added is already in database
  */
 async function addMovie(body, createrId) {
-  let { title, description, releaseDate, cast, director } = body;
-  console.log(cast);
+  let { title, description, photo, releaseDate, cast, director } = body;
 
   const duplicate = await Movies.findOne({ title, releaseDate, director });
   if (duplicate) {
     throw new Error("duplicate");
   }
-
+  console.log(photo);
   const data = await Movies.create({
     title,
     description,
+    photo,
     releaseDate,
     cast,
     director,
     createdBy: createrId,
     updatedBy: createrId,
   });
+  console.log(data);
 
   if (!data) {
     return { status: 400, message: "Could not add movie. Try later" };
@@ -133,6 +145,7 @@ async function deleteMovie(id) {
 module.exports = {
   searchMovie,
   getAll,
+  getUserMovies,
   getById,
   addMovie,
   updateMovie,

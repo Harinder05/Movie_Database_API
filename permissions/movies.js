@@ -2,14 +2,15 @@ const AccessControl = require("role-acl");
 const ac = new AccessControl();
 
 // Permissions for admin
-ac.grant("admin").execute("delete").on("movie");
+ac.grant("admin").execute("delete").on("movie").execute("update").on("movie");
 
 // User permissions
 ac.grant("user")
   .condition({ Fn: "EQUALS", args: { requester: "$.owner" } })
   .execute("update")
-  .on("movie", ["title", "description", "releaseDate", "director", "cast"]);
+  .on("movie");
 
+ac.grant("user").execute("delete").on("movie");
 exports.update = (requester, data) => {
   return ac
     .can(requester.role)

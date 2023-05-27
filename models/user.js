@@ -9,7 +9,6 @@ const User = require("../schemas/dbSchemas/user");
 const { generateToken } = require("../controllers/auth");
 const bcryptSalt = bcrypt.genSaltSync(10);
 
-
 /**
  * @function hashpassword
  * @description Hashes the password that is given using the salt provided
@@ -50,7 +49,6 @@ exports.registerUser = async function registerUser(body) {
   };
 };
 
-
 /**
  * @function loginUser
  * @description Logs in a user
@@ -63,8 +61,13 @@ exports.loginUser = async function loginUser(body) {
   if (userExists) {
     const checkPassword = bcrypt.compareSync(password, userExists.password);
     if (checkPassword) {
-      const token = generateToken(userExists);
-      return { status: 200, message: `Login successful. TOKEN:  ${token}` };
+      const { token, userinfo } = generateToken(userExists);
+      return {
+        status: 200,
+        message: `Login successful`,
+        token: token,
+        userinfo: userinfo,
+      };
     } else {
       return { status: 401, message: "Password not correct." };
     }
@@ -75,7 +78,6 @@ exports.loginUser = async function loginUser(body) {
     };
   }
 };
-
 
 /**
  * @function updateUser

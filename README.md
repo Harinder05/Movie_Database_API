@@ -1,5 +1,9 @@
 # Movie and TV Show Database API
 
+Project Video : https://youtu.be/KrzfjzklWDo
+
+React Frontend : https://github.com/Harinder05/movie_api_frontend.git
+
 This is a RESTful API for managing movies and TV shows, built with Node.js, Koa, MongoDB, and JavaScript.
 
 ## Prerequisites
